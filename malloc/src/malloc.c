@@ -10,8 +10,8 @@
 // allouer le meilleur block
 
 struct global_variable{  
-    struct header* head; // le pointeur vers le premier bloc de mémoire
-    struct header* tail; // le pointeur vers le dernier bloc de mémoire
+    struct header *head; // le pointeur vers le premier bloc de mémoire
+    struct header *tail; // le pointeur vers le dernier bloc de mémoire
 };
 
 static struct global_variable gv={NULL,NULL};
@@ -27,11 +27,11 @@ static size_t align(size_t size)
 
 
 /* renvoie la block libre dont la taille se rapproche le plus de la taille du block à allouer */
-static struct header* best_fit_free(size_t size)
+static struct header *best_fit_free(size_t size)
 {
-    struct header* closest=NULL;
+    struct header *closest=NULL;
     size_t dif=SIZE_MAX;
-    struct header* current=gv.head;
+    struct header *current=gv.head;
     while(current!=NULL)
     {
 
@@ -47,13 +47,13 @@ static struct header* best_fit_free(size_t size)
 }
 
 /* crée ou rajoute un nouveau bloc de mémoire à head */
-static struct header* new_block(size_t size)   
+static struct header *new_block(size_t size)   
 {
-    void* block=mmap(NULL, size, PROT_READ | PROT_WRITE, MAP_PRIVATE | MAP_ANONYMOUS, -1, 0);
+    void *block=mmap(NULL, size, PROT_READ | PROT_WRITE, MAP_PRIVATE | MAP_ANONYMOUS, -1, 0);
     if (block == MAP_FAILED) {
         return NULL;
     }
-    struct header* new_header=block;
+    struct header *new_header=block;
     new_header->size=size-sizeof(struct header);
     new_header->prev=NULL;
     new_header->next=NULL;
@@ -73,21 +73,83 @@ static struct header* new_block(size_t size)
 }
 
 
+
+/* supprimer un block mémoire si il est complètement vide*/
+static void delete_block(struct header *header)
+{
+    struct header *prev=header->prev;
+    struct header *next=header->next;
+    size_t len=header->size+sizeof(struct header);
+    if (munmap(header,len)==-1)
+    {
+        return;
+    }
+    if (prev)
+    {
+        prev->next=next;
+    }
+    else
+    {
+        gv.head=next;
+    }
+    if (next)
+    {
+        next->prev=prev;
+    }
+    else
+    {
+        gv.tail=prev;
+    }
+}
+
+
+/* retourne 1 si b est collé juste après dans la mémoire */
+static int colle(struct header  *a, struct header *b)
+{
+    void* base=a+1;
+    char* fin=base;
+    fin+=a->size;
+    void* adresse=fin;
+    return adresse==b;
+}
+
+
+
+/* retour 1 si le block entier est libre, 0 sinon */
+static int block_entier_libre(struct header *header)
+{
+    if (header->free!=0)
+    {
+        return 0;
+    }
+    if (header->prev && colle(header->prev,header))
+    {
+        return 0;
+    }
+    if (header->next && colle(header,header->next))
+    {
+        return 0;
+    }
+    return 1; 
+}
+
+
+
 /* fusionne le bloc header avec le bloque suivant si libre */
-static struct header* merge_block(struct header* header) 
+static struct header *merge_block(struct header *header) 
 {
     if (header==NULL || header->next==NULL) 
     {
         return NULL;
     }
-    void* temp=((char*)(header + 1) + header->size);
-    struct header* next_one=temp;
+    void *temp=((char*)(header + 1) + header->size);
+    struct header *next_one=temp;
     if (next_one != header->next) return header;
     if (header->next==NULL || header->next->free==1) 
     {
         return header;
     }
-    struct header* next=header->next;
+    struct header *next=header->next;
     if (next->free==0)
     {
         header->size+=sizeof(struct header)+next->size;
@@ -102,14 +164,14 @@ static struct header* merge_block(struct header* header)
 
 
 /* découpe un bloc de mémoire en 2 et renvoie le nouveau block */
-static struct header* split_block(struct header* header,size_t size)
+static struct header *split_block(struct header *header,size_t size)
 {
     if (size>=header->size)
     {
         return header;
     }
     void* temp=((char*)(header+1)+size);
-    struct header* new_block=temp;
+    struct header *new_block=temp;
     new_block->size=header->size-sizeof(struct header)-size;
     new_block->free=0;
     new_block->prev=header;
@@ -129,8 +191,13 @@ static struct header* split_block(struct header* header,size_t size)
 void* malloc(size_t s)  
 {    
     if (s==0) s=16;
+    if (s > SIZE_MAX /2)
+    {   
+        errno = ENOMEM;
+        return NULL;
+    }
     size_t size=align(s);
-    struct header* best_fit=best_fit_free(size);
+    struct header *best_fit=best_fit_free(size);
     if (gv.head==NULL || best_fit==NULL) 
     {
         long size_new_block=sysconf(_SC_PAGESIZE);
@@ -139,7 +206,7 @@ void* malloc(size_t s)
         {
             s_final+=size_new_block;
         }                
-        struct header* h=new_block(s_final);
+        struct header *h=new_block(s_final);
         if (h==NULL) 
         {
             return NULL;
@@ -159,13 +226,14 @@ void* malloc(size_t s)
 
 
 /* libère un bloc de mémoire comme free */
-void free(void* ptr)   
+void free(void *ptr)   
 {
     if (ptr==NULL) return;
-    struct header* header=(struct header *)ptr - 1;
+    struct header *header=(struct header *)ptr - 1;
     header->free=0;
     if (header != gv.head && header->prev->free==0) header=merge_block(header->prev);
     if (header!=gv.tail && header->next->free==0) header=merge_block(header);
+    if (block_entier_libre(header)==1) delete_block(header);
 }
 
 
@@ -176,7 +244,7 @@ void* calloc(size_t number, size_t size)
     size_t total_size;
     if (__builtin_mul_overflow(number, size, &total_size)) 
     {
-      //  errno = ENOMEM;
+        errno = ENOMEM;
         return NULL;    
     }
     void* ptr=malloc(total_size);
@@ -191,7 +259,7 @@ void* calloc(size_t number, size_t size)
 
 
 /* realloue un bloc de mémoire comme realloc */
-void* realloc(void* ptr, size_t s)   
+void* realloc(void *ptr, size_t s)   
 {
     if (ptr==NULL) return malloc(s);
     if (s==0) 
@@ -218,7 +286,7 @@ void* realloc(void* ptr, size_t s)
         }
         if (header->size < size)
         {
-            void* res=malloc(size);
+            void *res=malloc(size);
             if (res==NULL) return NULL;
             memcpy(res,ptr,header->size);
             free(ptr);

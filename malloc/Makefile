@@ -1,7 +1,7 @@
 CC = gcc
 CPPFLAGS = -D_DEFAULT_SOURCE
 CFLAGS = -std=c99 -pedantic -Wall -Wextra -Werror -Wvla -fvisibility=hidden -fPIC
-LDFLAGS = -shared -Wl,-no-undefined
+LDFLAGS = -shared -Wl,--no-undefined
 
 SRC = src/malloc.c
 OBJ = $(SRC:.c=.o)
@@ -17,13 +17,18 @@ $(TARGET): $(OBJ)
 %.o: %.c
 	$(CC) $(CPPFLAGS) $(CFLAGS) -c -o $@ $<
 
-check: $(TARGET)
-	$(CC) -Wall -Wextra tests/test.c -o tests/test
+check: library tests/test
 	LD_PRELOAD=./$(TARGET) ./tests/test
+	sh tests/test.sh
 
+debug: clean
+debug: CFLAGS += -g3 -O0
+debug: library
 
+tests/%: tests/%.c
+	$(CC) -std=c11 -D_DEFAULT_SOURCE -Wall -Wextra -Werror -pthread -o $@ $<
 
 clean:
-	rm -f $(TARGET) $(OBJ) tests/test
+	rm -f $(TARGET) $(OBJ) tests/test *.o
 
-.PHONY: all library check clean
+.PHONY: all library check clean debug

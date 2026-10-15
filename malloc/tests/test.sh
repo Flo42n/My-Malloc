@@ -1,14 +1,28 @@
 #!/bin/sh
-set -e
 
-LD_PRELOAD=./libmalloc.so ls > /dev/null
-LD_PRELOAD=./libmalloc.so ls -la > /dev/null
-LD_PRELOAD=./libmalloc.so factor 20 30 40 50 60 70 80 90 > /dev/null
-LD_PRELOAD=./libmalloc.so tar -cf malloc.tar libmalloc.so > /dev/null
-LD_PRELOAD=./libmalloc.so find ../ > /dev/null
-LD_PRELOAD=./libmalloc.so tree ../ > /dev/null
-LD_PRELOAD=./libmalloc.so od libmalloc.so > /dev/null
-LD_PRELOAD=./libmalloc.so git status > /dev/null
-LD_PRELOAD=./libmalloc.so tar -cf malloc.tar "$LIB"
-rm -f malloc.tar
+LIB="$PWD/libmalloc.so"
+a_failed=0
 
+tests()
+{
+    command -v "$1" >/dev/null 2>&1 || { echo "skip $*"; return; }
+    if LD_PRELOAD="$LIB" "$@" > /dev/null 2>&1; then
+        echo "ok   $*"
+    else
+        echo "pas ok $*"
+        a_failed=1
+    fi
+}
+
+tests ls
+tests ls -la
+tests factor 20 30 40 50 60 70 80 90
+tests find src tests
+tests tree src
+tests od libmalloc.so
+tests git status
+tests ip a
+tests tar -cf /tmp/malloc.tar libmalloc.so
+rm -f /tmp/malloc.tar
+
+exit $a_failed

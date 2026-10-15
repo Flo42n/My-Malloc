@@ -1,5 +1,5 @@
-#ifndef MY_MALLOC_H
-#define MY_MALLOC_H
+#ifndef MALLOC_H
+#define MALLOC_H
 
 #include <stddef.h>
 
@@ -18,4 +18,4 @@ __attribute__((visibility("default"))) void *calloc(size_t number, size_t size);
 __attribute__((visibility("default"))) void *realloc(void *ptr, size_t size);
 
 
-#endif /* MY_MALLOC_H */
+#endif /* MALLOC_H */
