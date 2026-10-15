@@ -18,11 +18,11 @@ $(TARGET): $(OBJ)
 	$(CC) $(CPPFLAGS) $(CFLAGS) -c -o $@ $<
 
 check: library tests/test
-	LD_PRELOAD=./$(TARGET) ./tests/test
+	LD_PRELOAD=./$(TARGET) ./tests/test	
 	sh tests/test.sh
 
 debug: clean
-debug: CFLAGS += -g3 -O0
+debug: CFLAGS += -g 
 debug: library
 
 tests/%: tests/%.c
