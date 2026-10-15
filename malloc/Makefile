@@ -26,7 +26,7 @@ debug: CFLAGS += -g
 debug: library
 
 tests/%: tests/%.c
-	$(CC) -std=c11 -D_DEFAULT_SOURCE -Wall -Wextra -Werror -pthread -o $@ $<
+	$(CC) $(CPPFLAGS) $(CFLAGS) -o $@ $<
 
 clean:
 	rm -f $(TARGET) $(OBJ) tests/test *.o
