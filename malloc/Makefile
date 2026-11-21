@@ -2,7 +2,6 @@ CC = gcc
 CPPFLAGS = -D_DEFAULT_SOURCE
 CFLAGS = -std=c99 -pedantic -Wall -Wextra -Werror -Wvla -fvisibility=hidden -fPIC
 LDFLAGS = -shared -Wl,--no-undefined
-
 SRC = src/malloc.c
 OBJ = $(SRC:.c=.o)
 TARGET = libmalloc.so
