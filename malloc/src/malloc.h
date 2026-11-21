@@ -16,4 +16,4 @@ __attribute__((visibility("default"))) void free(void *ptr);
 __attribute__((visibility("default"))) void *calloc(size_t number, size_t size);
 __attribute__((visibility("default"))) void *realloc(void *ptr, size_t size);
 
-#endif /* MALLOC_H */
+#endif  /* MALLOC_H */
